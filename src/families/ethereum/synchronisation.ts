@@ -164,11 +164,16 @@ export const getAccountShape: GetAccountShape = async (
   }));
   const operations = mergeOps(initialStableOperations, newOps);
 
-  const NFTMetadata = await api.getNFTMetadata(
-    flatNftOps.map(({ contract, tokenId }) => ({ contract, tokenId }))
-  );
+  let nfts;
+  if (getEnv("NFT")) {
+    const NFTMetadata = await api.getNFTMetadata(
+      flatNftOps.map(({ contract, tokenId }) => ({ contract, tokenId }))
+    );
+    nfts = (initialAccount?.nfts || []).concat(
+      await getNfts(flatNftOps, NFTMetadata)
+    );
+  }
 
-  const nfts = await getNfts(flatNftOps, NFTMetadata);
   const accountShape: Partial<Account> = {
     operations,
     balance,
