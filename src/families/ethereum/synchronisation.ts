@@ -21,7 +21,7 @@ import type {
   NFTOperation,
   NFT,
 } from "../../types";
-import { API, apiForCurrency, NFTMetadataOutput, Tx } from "../../api/Ethereum";
+import { API, apiForCurrency, Tx } from "../../api/Ethereum";
 import { digestTokenAccounts, prepareTokenAccounts } from "./modules";
 import { findTokenByAddressInCurrency } from "@ledgerhq/cryptoassets";
 import { encodeNftId } from "../../nft";
@@ -168,15 +168,9 @@ export const getAccountShape: GetAccountShape = async (
   }));
   const operations = mergeOps(initialStableOperations, newOps);
 
-  let nfts;
-  if (getEnv("NFT")) {
-    const NFTMetadata = await api.getNFTMetadata(
-      flatNftOps.map(({ contract, tokenId }) => ({ contract, tokenId }))
-    );
-    nfts = (initialAccount?.nfts || []).concat(
-      await getNfts(flatNftOps, NFTMetadata)
-    );
-  }
+  const nfts = getEnv("NFT")
+    ? (initialAccount?.nfts || []).concat(await getNfts(flatNftOps))
+    : undefined;
 
   const accountShape: Partial<Account> = {
     operations,
@@ -607,10 +601,7 @@ async function loadERC20Balances(tokenAccounts, address, api) {
     .filter(Boolean);
 }
 
-function getNfts(
-  nftOperations: NFTOperation[],
-  nftMetadata: NFTMetadataOutput
-): NFT[] {
+function getNfts(nftOperations: NFTOperation[]): NFT[] {
   const nftBalance: Record<string, NFTOperation> = nftOperations.reduce(
     (acc, op) => {
       // Creating a "token for a contract" unique key
@@ -634,26 +625,12 @@ function getNfts(
 
       const contract = op.contract.toLowerCase();
       const { tokenId, standard, amount, id } = op;
-      const md = nftMetadata?.[contract]?.[tokenId] ?? {};
-      const {
-        nftName = null,
-        tokenName = null,
-        picture = null,
-        description = null,
-        properties = null,
-      } = md;
-
       return {
         id,
         tokenId,
-        nftName,
-        picture,
-        description,
-        properties,
         amount,
         collection: {
           contract,
-          tokenName,
           standard,
         },
       } as NFT;

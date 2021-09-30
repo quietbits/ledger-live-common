@@ -1,5 +1,6 @@
-import { map } from "rxjs/operators";
+import { map, switchMap } from "rxjs/operators";
 import { accountFormatters } from "@ledgerhq/live-common/lib/account";
+import { hydrateNfts } from "@ledgerhq/live-common/lib/nft";
 import { scan, scanCommonOpts } from "../scan";
 import type { ScanCommonOpts } from "../scan";
 export default {
@@ -19,9 +20,17 @@ export default {
       format: string;
     }
   ) =>
-    scan(opts).pipe(
-      map((account) =>
-        (accountFormatters[opts.format] || accountFormatters.default)(account)
+    scan(opts)
+      .pipe(
+        switchMap(async (account) => ({
+          ...account,
+          nfts:
+            account.nfts && (await hydrateNfts(account.nfts, account.currency)),
+        }))
       )
-    ),
+      .pipe(
+        map((account) =>
+          (accountFormatters[opts.format] || accountFormatters.default)(account)
+        )
+      ),
 };

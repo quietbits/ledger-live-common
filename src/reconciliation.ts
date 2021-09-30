@@ -27,6 +27,7 @@ import {
   fromTezosResourcesRaw,
   fromElrondResourcesRaw,
   fromCryptoOrgResourcesRaw,
+  fromNFTRaw,
 } from "./account";
 import consoleWarnExpectToEqual from "./consoleWarnExpectToEqual";
 
@@ -171,6 +172,7 @@ export function patchAccount(
   account: Account,
   updatedRaw: AccountRaw
 ): Account {
+  console.trace("nfts", { account, updatedRaw });
   // id can change after a sync typically if changing the version or filling more info. in that case we consider all changes.
   if (account.id !== updatedRaw.id) return fromAccountRaw(updatedRaw);
   let subAccounts;
@@ -374,6 +376,12 @@ export function patchAccount(
     next.cryptoOrgResources = fromCryptoOrgResourcesRaw(
       updatedRaw.cryptoOrgResources
     );
+    changed = true;
+  }
+
+  const nfts = updatedRaw?.nfts?.map(fromNFTRaw);
+  if (updatedRaw.nfts && !isEqual(account.nfts, nfts)) {
+    next.nfts = nfts;
     changed = true;
   }
 
