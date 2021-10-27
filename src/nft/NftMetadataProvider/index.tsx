@@ -28,7 +28,7 @@ const NftMetadataContext = createContext<NFTMetadataContextType>({
   clearCache: () => {},
 });
 
-const metadataCallBatcher: any = (() => {
+export const metadataCallBatcher: any = (() => {
   const batch: BatchElement[] = [];
 
   let debounce;
