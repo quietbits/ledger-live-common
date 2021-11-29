@@ -14,6 +14,7 @@ import {
 } from "../logic";
 import { NetworkDown, LedgerAPI4xx, LedgerAPI5xx } from "@ledgerhq/errors";
 import { requestInterceptor, responseInterceptor } from "../../../network";
+import type { BalanceAsset } from "../types";
 
 const LIMIT = getEnv("API_STELLAR_HORIZON_FETCH_LIMIT");
 const FALLBACK_BASE_FEE = 100;
@@ -69,14 +70,19 @@ export const fetchAccount = async (
   blockHeight?: number;
   balance: BigNumber;
   spendableBalance: BigNumber;
+  assets: BalanceAsset[];
 }> => {
   let account: typeof AccountRecord = {};
   let balance: Record<string, any> = {};
+  let assets: BalanceAsset[] = [];
 
   try {
     account = await server.accounts().accountId(addr).call();
     balance = account.balances.find((balance) => {
       return balance.asset_type === "native";
+    });
+    assets = account.balances.filter((balance) => {
+      return balance.asset_type !== "native";
     });
   } catch (e) {
     balance.balance = "0";
@@ -96,6 +102,7 @@ export const fetchAccount = async (
     blockHeight: account.sequence ? Number(account.sequence) : undefined,
     balance: formattedBalance,
     spendableBalance,
+    assets,
   };
 };
 

@@ -19,6 +19,7 @@ export type NetworkInfoRaw = {
   fees: string;
   baseReserve: string;
 };
+
 export const StellarMemoType = [
   "NO_MEMO",
   "MEMO_TEXT",
@@ -35,6 +36,7 @@ export type Transaction = TransactionCommon & {
   memoType: string | null | undefined;
   memoValue: string | null | undefined;
 };
+
 export type TransactionRaw = TransactionCommonRaw & {
   family: "stellar";
   networkInfo: NetworkInfoRaw | null | undefined;
@@ -43,4 +45,33 @@ export type TransactionRaw = TransactionCommonRaw & {
   memoType: string | null | undefined;
   memoValue: string | null | undefined;
 };
+
 export const reflect = (_declare: any): void => {};
+
+export type BalanceAsset = {
+  balance: string;
+  limit: string;
+  buying_liabilities: string;
+  selling_liabilities: string;
+  last_modified_ledger: number;
+  is_authorized: boolean;
+  is_authorized_to_maintain_liabilities: boolean;
+  asset_type: string;
+  asset_code: string;
+  asset_issuer: string;
+};
+
+export type StellarOperation = {
+  id: string;
+  paging_token: string;
+  transaction_successful: boolean;
+  source_account: string;
+  type: string;
+  type_i: number;
+  created_at: string;
+  transaction_hash: string;
+  asset_type: string;
+  from: string;
+  to: string;
+  amount: string;
+};
