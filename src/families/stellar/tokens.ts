@@ -1,6 +1,10 @@
 import BigNumber from "bignumber.js";
 import { emptyHistoryCache } from "../../account";
-import { listTokensForCryptoCurrency, findTokenById } from "../../currencies";
+import {
+  listTokensForCryptoCurrency,
+  findTokenById,
+  parseCurrencyUnit,
+} from "../../currencies";
 import type {
   TokenAccount,
   TokenCurrency,
@@ -26,7 +30,10 @@ const buildStellarTokenAccount = ({
 }): TokenAccount => {
   const assetId = getAssetIdFromTokenId(token.id);
   const id = `${parentAccountId}+${assetId}`;
-  const balance = new BigNumber(stellarAsset.balance || 0);
+  const balance = parseCurrencyUnit(
+    token.units[0],
+    stellarAsset.balance || "0"
+  );
 
   // TODO: get all operations
   const operations: Operation[] = [];
