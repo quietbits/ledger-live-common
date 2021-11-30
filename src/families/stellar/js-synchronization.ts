@@ -26,7 +26,7 @@ const getAccountShape: GetAccountShape = async (info, syncConfig) => {
   const subAccounts =
     buildSubAccounts({
       currency,
-      accountId: address,
+      accountId,
       assets,
       syncConfig,
     }) || [];
