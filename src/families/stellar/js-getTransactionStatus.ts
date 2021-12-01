@@ -13,6 +13,7 @@ import {
   StellarWrongMemoFormat,
   SourceHasMultiSign,
   AccountAwaitingSendPendingOperations,
+  StellarAssetRequired,
 } from "../../errors";
 import { formatCurrencyUnit } from "../../currencies";
 import type { Account } from "../../types";
@@ -42,40 +43,78 @@ const getTransactionStatus = async (
     throw new AccountAwaitingSendPendingOperations();
   }
 
-  if (!t.recipient) {
-    errors.recipient = new RecipientRequired("");
-  } else if (a.freshAddress === t.recipient) {
-    errors.recipient = new InvalidAddressBecauseDestinationIsAlsoSource();
-  } else if (!isAddressValid(t.recipient)) {
-    errors.recipient = new InvalidAddress("");
-  }
-
-  if (await isAccountMultiSign(a)) {
-    errors.recipient = new SourceHasMultiSign("", {
-      currencyName: a.currency.name,
-    });
-  }
-
   if (!t.fees || !t.baseReserve) {
     errors.fees = new FeeNotLoaded();
   }
 
   const estimatedFees = !t.fees ? new BigNumber(0) : t.fees;
   const baseReserve = !t.baseReserve ? new BigNumber(0) : t.baseReserve;
+
   let amount = !useAllAmount
-    ? t.amount
+    ? t.amount || 0
     : a.balance.minus(baseReserve).minus(estimatedFees);
+
   let totalSpent = !useAllAmount
     ? amount.plus(estimatedFees)
     : a.balance.minus(baseReserve);
 
-  if (totalSpent.gt(a.balance.minus(baseReserve))) {
-    errors.amount = new NotEnoughSpendableBalance(undefined, {
-      minimumAmount: formatCurrencyUnit(a.currency.units[0], baseReserve, {
-        disableRounding: true,
-        showCode: true,
-      }),
-    });
+  // Operation specific checks
+  if (t.operationType === "changeTrust") {
+    // TODO: ??? both are set together, might be a better way to handle them
+    if (!t.assetCode) {
+      errors.assetCode = new StellarAssetRequired("");
+    }
+    if (!t.assetIssuer) {
+      errors.assetIssuer = new StellarAssetRequired("");
+    }
+  } else {
+    // Payment
+    if (!t.recipient) {
+      errors.recipient = new RecipientRequired("");
+    } else if (a.freshAddress === t.recipient) {
+      errors.recipient = new InvalidAddressBecauseDestinationIsAlsoSource();
+    } else if (!isAddressValid(t.recipient)) {
+      errors.recipient = new InvalidAddress("");
+    }
+
+    if (totalSpent.gt(a.balance.minus(baseReserve))) {
+      errors.amount = new NotEnoughSpendableBalance(undefined, {
+        minimumAmount: formatCurrencyUnit(a.currency.units[0], baseReserve, {
+          disableRounding: true,
+          showCode: true,
+        }),
+      });
+    }
+
+    if (
+      !errors.recipient &&
+      !errors.amount &&
+      (amount.lt(0) || totalSpent.gt(a.balance))
+    ) {
+      errors.amount = new NotEnoughBalance();
+      totalSpent = new BigNumber(0);
+      amount = new BigNumber(0);
+    }
+
+    if (!errors.amount && amount.eq(0)) {
+      errors.amount = new AmountRequired();
+    }
+
+    // if amount < 1.0 you can't send to an empty address
+    if (
+      !errors.recipient &&
+      t.recipient &&
+      !errors.amount &&
+      !(await checkRecipientExist({
+        account: a,
+        recipient: t.recipient,
+      })) &&
+      amount.lt(10000000)
+    ) {
+      errors.amount = new NotEnoughBalanceBecauseDestinationNotCreated("", {
+        minimalAmount: "1 XLM",
+      });
+    }
   }
 
   if (
@@ -85,33 +124,9 @@ const getTransactionStatus = async (
     errors.amount = new NotEnoughBalance();
   }
 
-  if (
-    !errors.recipient &&
-    !errors.amount &&
-    (amount.lt(0) || totalSpent.gt(a.balance))
-  ) {
-    errors.amount = new NotEnoughBalance();
-    totalSpent = new BigNumber(0);
-    amount = new BigNumber(0);
-  }
-
-  if (!errors.amount && amount.eq(0)) {
-    errors.amount = new AmountRequired();
-  }
-
-  // if amount < 1.0 you can't send to an empty address
-  if (
-    !errors.recipient &&
-    t.recipient &&
-    !errors.amount &&
-    !(await checkRecipientExist({
-      account: a,
-      recipient: t.recipient,
-    })) &&
-    amount.lt(10000000)
-  ) {
-    errors.amount = new NotEnoughBalanceBecauseDestinationNotCreated("", {
-      minimalAmount: "1 XLM",
+  if (await isAccountMultiSign(a)) {
+    errors.recipient = new SourceHasMultiSign("", {
+      currencyName: a.currency.name,
     });
   }
 

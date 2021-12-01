@@ -45,6 +45,10 @@ const fromTransactionRaw = (tr: TransactionRaw): Transaction => {
       fees: new BigNumber(networkInfo.fees),
       baseReserve: new BigNumber(networkInfo.baseReserve),
     },
+    operationType: tr.operationType,
+    assetCode: tr.assetCode,
+    assetIssuer: tr.assetIssuer,
+    assetType: tr.assetType,
   };
 };
 
@@ -63,6 +67,10 @@ const toTransactionRaw = (t: Transaction): TransactionRaw => {
       fees: networkInfo.fees.toString(),
       baseReserve: networkInfo.baseReserve.toString(),
     },
+    operationType: t.operationType,
+    assetCode: t.assetCode,
+    assetIssuer: t.assetIssuer,
+    assetType: t.assetType,
   };
 };
 

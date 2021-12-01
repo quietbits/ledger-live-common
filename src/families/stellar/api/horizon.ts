@@ -267,6 +267,15 @@ export const buildCreateAccountOperation = (
   });
 };
 
+export const buildChangeTrustOperation = (
+  assetCode: string,
+  assetIssuer: string
+): any => {
+  return StellarSdk.Operation.changeTrust({
+    asset: new StellarSdk.Asset(assetCode, assetIssuer),
+  });
+};
+
 export const buildTransactionBuilder = (
   source: typeof StellarSdk.Account,
   fee: BigNumber

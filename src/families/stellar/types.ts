@@ -35,6 +35,10 @@ export type Transaction = TransactionCommon & {
   baseReserve: BigNumber | null | undefined;
   memoType: string | null | undefined;
   memoValue: string | null | undefined;
+  operationType: "payment" | "changeTrust";
+  assetCode: string | undefined;
+  assetIssuer: string | undefined;
+  assetType: string | undefined;
 };
 
 export type TransactionRaw = TransactionCommonRaw & {
@@ -44,6 +48,10 @@ export type TransactionRaw = TransactionCommonRaw & {
   baseReserve: string | null | undefined;
   memoType: string | null | undefined;
   memoValue: string | null | undefined;
+  operationType: "payment" | "changeTrust";
+  assetCode: string | undefined;
+  assetIssuer: string | undefined;
+  assetType: string | undefined;
 };
 
 export const reflect = (_declare: any): void => {};

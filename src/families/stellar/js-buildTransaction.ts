@@ -8,9 +8,11 @@ import {
   buildPaymentOperation,
   buildCreateAccountOperation,
   buildTransactionBuilder,
+  buildChangeTrustOperation,
   loadAccount,
 } from "./api";
 import { addressExists } from "./logic";
+import { StellarAssetRequired } from "../../errors";
 
 /**
  * @param {Account} a
@@ -20,33 +22,61 @@ export const buildTransaction = async (
   account: Account,
   transaction: Transaction
 ): Promise<any> => {
-  const { recipient, useAllAmount, networkInfo, fees, memoType, memoValue } =
-    transaction;
+  const {
+    recipient,
+    useAllAmount,
+    networkInfo,
+    fees,
+    memoType,
+    memoValue,
+    operationType,
+    assetCode,
+    assetIssuer,
+  } = transaction;
 
   if (!fees) {
     throw new FeeNotLoaded();
   }
 
-  invariant(networkInfo && networkInfo.family === "stellar", "stellar family");
-  let amount = new BigNumber(0);
-  amount =
-    useAllAmount && networkInfo
-      ? account.balance.minus(networkInfo.baseReserve).minus(fees)
-      : transaction.amount;
-  if (!amount) throw new AmountRequired();
   const source = await loadAccount(account.freshAddress);
-  if (!source) throw new NetworkDown();
+
+  if (!source) {
+    throw new NetworkDown();
+  }
+
+  invariant(networkInfo && networkInfo.family === "stellar", "stellar family");
+
   const transactionBuilder = buildTransactionBuilder(source, fees);
   let operation = null;
-  const recipientExists = await addressExists(transaction.recipient); // TODO: use cache with checkRecipientExist instead?
 
-  if (recipientExists) {
-    operation = buildPaymentOperation(recipient, amount);
+  if (operationType === "changeTrust") {
+    if (!assetCode || !assetIssuer) {
+      throw new StellarAssetRequired("");
+    }
+
+    operation = buildChangeTrustOperation(assetCode, assetIssuer);
   } else {
-    operation = buildCreateAccountOperation(recipient, amount);
+    // Payment
+    let amount = new BigNumber(0);
+    amount =
+      useAllAmount && networkInfo
+        ? account.balance.minus(networkInfo.baseReserve).minus(fees)
+        : transaction.amount;
+    if (!amount) {
+      throw new AmountRequired();
+    }
+
+    const recipientExists = await addressExists(transaction.recipient); // TODO: use cache with checkRecipientExist instead?
+
+    if (recipientExists) {
+      operation = buildPaymentOperation(recipient, amount);
+    } else {
+      operation = buildCreateAccountOperation(recipient, amount);
+    }
   }
 
   transactionBuilder.addOperation(operation);
+
   let memo = null;
 
   if (memoType && memoValue) {
