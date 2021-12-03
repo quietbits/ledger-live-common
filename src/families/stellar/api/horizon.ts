@@ -40,10 +40,9 @@ StellarSdk.HorizonAxiosClient.interceptors.response.use((response) => {
   return response;
 });
 
-const getFormattedAmount = (amount: BigNumber) => {
-  return amount
-    .div(new BigNumber(10).pow(currency.units[0].magnitude))
-    .toString(10);
+const getFormattedAmount = (amount: BigNumber, amountMagnitude?: number) => {
+  const magnitude = amountMagnitude || currency.units[0].magnitude;
+  return amount.div(new BigNumber(10).pow(magnitude)).toString(10);
 };
 
 export const fetchBaseFee = async (): Promise<number> => {
@@ -246,13 +245,20 @@ export const broadcastTransaction = async (
 
 export const buildPaymentOperation = (
   destination: string,
-  amount: BigNumber
+  amount: BigNumber,
+  assetCode: string | undefined,
+  assetIssuer: string | undefined,
+  amountMagnitude: number
 ): any => {
-  const formattedAmount = getFormattedAmount(amount);
+  const formattedAmount = getFormattedAmount(amount, amountMagnitude);
+  const asset =
+    assetCode && assetIssuer
+      ? new StellarSdk.Asset(assetCode, assetIssuer)
+      : StellarSdk.Asset.native();
   return StellarSdk.Operation.payment({
     destination: destination,
     amount: formattedAmount,
-    asset: StellarSdk.Asset.native(),
+    asset,
   });
 };
 

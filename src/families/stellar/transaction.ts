@@ -8,6 +8,15 @@ import type { Account } from "../../types";
 import { getAccountUnit } from "../../account";
 import { formatCurrencyUnit } from "../../currencies";
 
+const getAssetCodeIssuer = (tr: Transaction | TransactionRaw) => {
+  if (tr.subAccountId) {
+    const assetString = tr.subAccountId.split("+")[1];
+    return assetString.split(":");
+  }
+
+  return [tr.assetCode, tr.assetIssuer];
+};
+
 export const formatTransaction = (
   { amount, recipient, fees, memoValue, useAllAmount }: Transaction,
   account: Account
@@ -33,6 +42,8 @@ export const formatTransaction = (
 const fromTransactionRaw = (tr: TransactionRaw): Transaction => {
   const common = fromTransactionCommonRaw(tr);
   const { networkInfo } = tr;
+  const [assetCode, assetIssuer] = getAssetCodeIssuer(tr);
+
   return {
     ...common,
     family: tr.family,
@@ -46,8 +57,9 @@ const fromTransactionRaw = (tr: TransactionRaw): Transaction => {
       baseReserve: new BigNumber(networkInfo.baseReserve),
     },
     operationType: tr.operationType,
-    assetCode: tr.assetCode,
-    assetIssuer: tr.assetIssuer,
+    assetCode,
+    assetIssuer,
+    // TODO: ??? might not need it
     assetType: tr.assetType,
   };
 };
@@ -55,6 +67,7 @@ const fromTransactionRaw = (tr: TransactionRaw): Transaction => {
 const toTransactionRaw = (t: Transaction): TransactionRaw => {
   const common = toTransactionCommonRaw(t);
   const { networkInfo } = t;
+  const [assetCode, assetIssuer] = getAssetCodeIssuer(t);
   return {
     ...common,
     family: t.family,
@@ -68,8 +81,9 @@ const toTransactionRaw = (t: Transaction): TransactionRaw => {
       baseReserve: networkInfo.baseReserve.toString(),
     },
     operationType: t.operationType,
-    assetCode: t.assetCode,
-    assetIssuer: t.assetIssuer,
+    assetCode,
+    assetIssuer,
+    // TODO: ??? might not need it
     assetType: t.assetType,
   };
 };

@@ -1,8 +1,7 @@
 import invariant from "invariant";
-import { BigNumber } from "bignumber.js";
 import StellarSdk from "stellar-sdk";
 import { AmountRequired, FeeNotLoaded, NetworkDown } from "@ledgerhq/errors";
-import type { Account } from "../../types";
+import type { Account, TokenAccount } from "../../types";
 import type { Transaction } from "./types";
 import {
   buildPaymentOperation,
@@ -12,6 +11,7 @@ import {
   loadAccount,
 } from "./api";
 import { addressExists } from "./logic";
+import { getAmountValue } from "./getAmountValue";
 import { StellarAssetRequired } from "../../errors";
 
 /**
@@ -24,7 +24,6 @@ export const buildTransaction = async (
 ): Promise<any> => {
   const {
     recipient,
-    useAllAmount,
     networkInfo,
     fees,
     memoType,
@@ -57,19 +56,34 @@ export const buildTransaction = async (
     operation = buildChangeTrustOperation(assetCode, assetIssuer);
   } else {
     // Payment
-    let amount = new BigNumber(0);
-    amount =
-      useAllAmount && networkInfo
-        ? account.balance.minus(networkInfo.baseReserve).minus(fees)
-        : transaction.amount;
+    const amount = getAmountValue(account, transaction, fees);
+
     if (!amount) {
       throw new AmountRequired();
     }
 
     const recipientExists = await addressExists(transaction.recipient); // TODO: use cache with checkRecipientExist instead?
 
+    let amountMagnitude = account.unit.magnitude;
+
+    if (transaction.subAccountId) {
+      const asset = account.subAccounts?.find(
+        (s) => s.id === transaction.subAccountId
+      ) as TokenAccount | undefined;
+
+      if (asset) {
+        amountMagnitude = asset.token.units[0].magnitude;
+      }
+    }
+
     if (recipientExists) {
-      operation = buildPaymentOperation(recipient, amount);
+      operation = buildPaymentOperation(
+        recipient,
+        amount,
+        assetCode,
+        assetIssuer,
+        amountMagnitude
+      );
     } else {
       operation = buildCreateAccountOperation(recipient, amount);
     }
