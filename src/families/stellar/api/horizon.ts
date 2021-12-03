@@ -40,8 +40,11 @@ StellarSdk.HorizonAxiosClient.interceptors.response.use((response) => {
   return response;
 });
 
-const getFormattedAmount = (amount: BigNumber, amountMagnitude?: number) => {
-  const magnitude = amountMagnitude || currency.units[0].magnitude;
+const getFormattedAmount = (amount: BigNumber) => {
+  // TODO: ??? not sure why we need this conditional, but it is more consistent
+  // with it. Otherwise, some transactions would just freeze on broadcasting at
+  // the very end.
+  const magnitude = currency?.units[0]?.magnitude || 7;
   return amount.div(new BigNumber(10).pow(magnitude)).toString(10);
 };
 
@@ -247,10 +250,9 @@ export const buildPaymentOperation = (
   destination: string,
   amount: BigNumber,
   assetCode: string | undefined,
-  assetIssuer: string | undefined,
-  amountMagnitude: number
+  assetIssuer: string | undefined
 ): any => {
-  const formattedAmount = getFormattedAmount(amount, amountMagnitude);
+  const formattedAmount = getFormattedAmount(amount);
   const asset =
     assetCode && assetIssuer
       ? new StellarSdk.Asset(assetCode, assetIssuer)

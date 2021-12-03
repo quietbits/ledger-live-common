@@ -1,7 +1,7 @@
 import invariant from "invariant";
 import StellarSdk from "stellar-sdk";
 import { AmountRequired, FeeNotLoaded, NetworkDown } from "@ledgerhq/errors";
-import type { Account, TokenAccount } from "../../types";
+import type { Account } from "../../types";
 import type { Transaction } from "./types";
 import {
   buildPaymentOperation,
@@ -64,25 +64,12 @@ export const buildTransaction = async (
 
     const recipientExists = await addressExists(transaction.recipient); // TODO: use cache with checkRecipientExist instead?
 
-    let amountMagnitude = account.unit.magnitude;
-
-    if (transaction.subAccountId) {
-      const asset = account.subAccounts?.find(
-        (s) => s.id === transaction.subAccountId
-      ) as TokenAccount | undefined;
-
-      if (asset) {
-        amountMagnitude = asset.token.units[0].magnitude;
-      }
-    }
-
     if (recipientExists) {
       operation = buildPaymentOperation(
         recipient,
         amount,
         assetCode,
-        assetIssuer,
-        amountMagnitude
+        assetIssuer
       );
     } else {
       operation = buildCreateAccountOperation(recipient, amount);
