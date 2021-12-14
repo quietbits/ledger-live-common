@@ -12,13 +12,21 @@ export type NetworkInfo = {
   family: "stellar";
   fees: BigNumber;
   baseReserve: BigNumber;
+  networkCongestionLevel?: NetworkCongestionLevel;
 };
 
 export type NetworkInfoRaw = {
   family: "stellar";
   fees: string;
   baseReserve: string;
+  networkCongestionLevel?: NetworkCongestionLevel;
 };
+
+export enum NetworkCongestionLevel {
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+}
 
 export const StellarMemoType = [
   "NO_MEMO",

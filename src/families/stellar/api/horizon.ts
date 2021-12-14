@@ -15,9 +15,12 @@ import {
 import { NetworkDown, LedgerAPI4xx, LedgerAPI5xx } from "@ledgerhq/errors";
 import { requestInterceptor, responseInterceptor } from "../../../network";
 import type { BalanceAsset } from "../types";
+import { NetworkCongestionLevel } from "../types";
 
 const LIMIT = getEnv("API_STELLAR_HORIZON_FETCH_LIMIT");
 const FALLBACK_BASE_FEE = 100;
+const TRESHOLD_LOW = 0.5;
+const TRESHOLD_MEDIUM = 0.75;
 const currency = getCryptoCurrencyById("stellar");
 const server = new StellarSdk.Server(getEnv("API_STELLAR_HORIZON"));
 
@@ -48,16 +51,39 @@ const getFormattedAmount = (amount: BigNumber) => {
   return amount.div(new BigNumber(10).pow(magnitude)).toString(10);
 };
 
-export const fetchBaseFee = async (): Promise<number> => {
-  let baseFee;
+export const fetchBaseFee = async (): Promise<{
+  baseFee: number;
+  recommendedFee: number;
+  networkCongestionLevel: NetworkCongestionLevel;
+}> => {
+  const baseFee = StellarSdk.BASE_FEE || FALLBACK_BASE_FEE;
+  let recommendedFee = baseFee;
+  let networkCongestionLevel = NetworkCongestionLevel.MEDIUM;
 
   try {
-    baseFee = await server.fetchBaseFee();
+    const feeStats = await server.feeStats();
+    const ledgerCapacityUsage = feeStats.ledger_capacity_usage;
+    recommendedFee = Number(feeStats.fee_charged.mode);
+
+    if (
+      ledgerCapacityUsage > TRESHOLD_LOW &&
+      ledgerCapacityUsage <= TRESHOLD_MEDIUM
+    ) {
+      networkCongestionLevel = NetworkCongestionLevel.MEDIUM;
+    } else if (ledgerCapacityUsage > TRESHOLD_MEDIUM) {
+      networkCongestionLevel = NetworkCongestionLevel.HIGH;
+    } else {
+      networkCongestionLevel = NetworkCongestionLevel.LOW;
+    }
   } catch (e) {
-    baseFee = FALLBACK_BASE_FEE;
+    // do nothing, will use defaults
   }
 
-  return baseFee;
+  return {
+    baseFee,
+    recommendedFee,
+    networkCongestionLevel,
+  };
 };
 
 /**
@@ -199,17 +225,20 @@ export const fetchAccountNetworkInfo = async (
     const baseReserve = new BigNumber(
       (ledger.base_reserve_in_stroops * (2 + numberOfEntries)).toString()
     );
-    const fees = new BigNumber(ledger.base_fee_in_stroops.toString());
+    const { recommendedFee, networkCongestionLevel } = await fetchBaseFee();
+
     return {
       family: "stellar",
-      fees,
+      fees: new BigNumber(recommendedFee.toString()),
       baseReserve,
+      networkCongestionLevel,
     };
   } catch (error) {
     return {
       family: "stellar",
       fees: new BigNumber(0),
       baseReserve: new BigNumber(0),
+      networkCongestionLevel: undefined,
     };
   }
 };

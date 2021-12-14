@@ -21,8 +21,8 @@ export const getAccountSpendableBalance = async (
   account: ServerApi.AccountRecord
 ): Promise<BigNumber> => {
   const minimumBalance = getMinimumBalance(account);
-  const baseFee = await fetchBaseFee();
-  return BigNumber.max(balance.minus(minimumBalance).minus(baseFee), 0);
+  const { recommendedFee } = await fetchBaseFee();
+  return BigNumber.max(balance.minus(minimumBalance).minus(recommendedFee), 0);
 };
 
 export const getOperationType = (
